@@ -57,19 +57,19 @@ export default function Hero() {
         )}
       </AnimatePresence>
 
-      {/* --- WEBGL INFINITE TOPOGRAPHY --- */}
-      <AnimatePresence>
-        {!isBooting && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 1.5, delay: 0.3 }} // Slower fade for cinematic effect
-            className="absolute inset-0 z-0 pointer-events-none w-full h-full"
-          >
-            <HeroBackground />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* --- WEBGL INFINITE TOPOGRAPHY (OPTIMIZED LOAD) --- */}
+      {/* This is no longer wrapped in a conditional. 
+        It mounts immediately and calculates in the background, 
+        but stays visually hidden (opacity 0) until the boot sequence finishes. 
+      */}
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: isBooting ? 0 : 1 }}
+        transition={{ duration: 1.5, ease: "easeInOut" }} 
+        className="absolute inset-0 z-0 pointer-events-none w-full h-full"
+      >
+        <HeroBackground />
+      </motion.div>
 
       {/* --- MAIN CONTENT --- */}
       <AnimatePresence>

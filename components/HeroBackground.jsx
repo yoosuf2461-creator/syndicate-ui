@@ -111,7 +111,7 @@ export default function HeroBackground() {
         maskImage: 'linear-gradient(to bottom, black 0%, black 75%, transparent 100%)'
       }}
     >
-      <Canvas camera={{ position: [0, 0, 1], zoom: 1 }} orthographic dpr={[1, 1.5]}>
+      <Canvas dpr={[1, 1.5]} gl={{ antialias: false }}>
         <ShaderPlane />
       </Canvas>
     </div>
