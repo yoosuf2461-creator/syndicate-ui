@@ -1,43 +1,56 @@
 "use client";
 
 import Navbar from "../components/Navbar";
-import LusionCursor from "../components/LusionCursor";
-import BentoGrid from "../components/BentoGrid";
-import ProcessSection from '../components/ProcessSection';
-import WorkGallery from '../components/WorkGallery';
-import AmbientMesh from '../components/AmbientMesh';
-import Footer from '../components/Footer'; 
-import Hero from '../components/hero' // We are actually using this now!
-import Testimonials from '../components/Testimonial';
+import Hero from '../components/hero'; 
+import dynamic from 'next/dynamic';
+
+// 🚀 THE LAZY LOAD ARCHITECTURE
+// These components are stripped from the initial download bundle.
+// ssr: false ensures WebGL never tries to render on the Next.js server.
+const AmbientMesh = dynamic(() => import('../components/AmbientMesh'), { ssr: false });
+const LusionCursor = dynamic(() => import('../components/LusionCursor'), { ssr: false });
+const BentoGrid = dynamic(() => import('../components/BentoGrid'));
+const ProcessSection = dynamic(() => import('../components/ProcessSection'));
+const WorkGallery = dynamic(() => import('../components/WorkGallery'));
+const Testimonials = dynamic(() => import('../components/Testimonial'));
+const Footer = dynamic(() => import('../components/Footer'));
 
 export default function Home() {
   return (
     <main className="bg-black min-h-screen w-full overflow-x-hidden selection:bg-[#4377FF] selection:text-white relative">
       
-      {/* 1. The Breathing Global Background */}
-      <AmbientMesh />
+      {/* 1. THE DESKTOP-ONLY WEBGL LAYER 
+        hidden md:block ensures mobile GPUs never paint this global mesh.
+      */}
+      <div className="hidden md:block">
+        <AmbientMesh />
+      </div>
 
-      {/* 2. Interactive Layer */}
-      <LusionCursor />
+      {/* 2. THE DESKTOP-ONLY CURSOR 
+        Phones don't have mice. Calculating cursor physics on mobile melts the CPU.
+      */}
+      <div className="hidden md:block">
+        <LusionCursor />
+      </div>
 
-      {/* 3. Navigation */}
+      {/* 3. PRIORITY RENDER: Navigation (Loads Instantly) */}
       <Navbar />
 
-      {/* 4. The NEW Terminal Hero Section */}
+      {/* 4. PRIORITY RENDER: Hero Section (Loads Instantly) */}
       <Hero />
 
-      {/* 5. Sections Wrapped with IDs for Navbar Routing */}
-      <div id="about">
+      {/* 5. DEFERRED RENDER: Below The Fold (Loads in the background) */}
+      <div id="about" className="relative z-10">
         <BentoGrid />
         <ProcessSection />
         <Testimonials />
       </div>
 
-      <div id="projects">
+      <div id="projects" className="relative z-10">
         <WorkGallery />
       </div>
 
-      {/* 6. Premium Footer */}
+      {/* 6. DEFERRED RENDER: Premium Footer */}
       <Footer />
 
     </main>
