@@ -109,19 +109,41 @@ function ShaderPlane() {
 
 export default function HeroBackground() {
   return (
-    // THE FIX: Removed the CSS maskImage completely
-    <div className="absolute inset-0 z-0 pointer-events-auto">
-      <Canvas 
-        dpr={[1, 1.5]} 
-        gl={{ 
-          antialias: false,
-          powerPreference: "high-performance",
-          alpha: true
-        }}
-        camera={{ position: [0, 0, 1], fov: 45 }}
-      >
-        <ShaderPlane />
-      </Canvas>
-    </div>
+    <>
+      {/* 💻 DESKTOP: The full interactive WebGL Fluid Grid */}
+      <div className="hidden md:block absolute inset-0 z-0 pointer-events-auto">
+        <Canvas 
+          dpr={[1, 1.2]} // Slightly more aggressive cap for safety
+          gl={{ 
+            antialias: false,
+            powerPreference: "high-performance",
+            alpha: true
+          }}
+          camera={{ position: [0, 0, 1], fov: 45 }}
+        >
+          <ShaderPlane />
+        </Canvas>
+      </div>
+
+      {/* 📱 MOBILE: The hyper-optimized pure CSS clone */}
+      <div className="block md:hidden absolute inset-0 z-0 bg-black pointer-events-none">
+        {/* CSS Grid Lines */}
+        <div 
+          className="absolute inset-0 opacity-40"
+          style={{
+            backgroundImage: `
+              linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px),
+              linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px)
+            `,
+            backgroundSize: '4rem 4rem',
+            // Replicates the exact bottom-fade from your shader
+            maskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 100%)'
+          }}
+        />
+        {/* The Electric Blue Glow (No math required) */}
+        <div className="absolute top-[20%] left-1/2 -translate-x-1/2 w-3/4 h-1/3 bg-[#4377FF]/20 blur-[80px] rounded-full mix-blend-screen" />
+      </div>
+    </>
   )
 }
