@@ -1,5 +1,5 @@
 'use client'
-import { useRef } from 'react'
+import { useRef, useEffect } from 'react'
 import { Canvas, useFrame, useThree, extend } from '@react-three/fiber'
 import { shaderMaterial } from '@react-three/drei'
 import * as THREE from 'three'
@@ -27,22 +27,21 @@ const FluidGridMaterial = shaderMaterial(
   varying vec2 vUv;
 
   void main() {
-    // Correct aspect ratio so the grid remains perfectly square
+    // Correct aspect ratio
     vec2 aspect = vec2(uResolution.x / uResolution.y, 1.0);
     vec2 st = vUv * aspect;
     vec2 mouse = uMouse * aspect;
 
-    // Calculate distance from current pixel to mouse
-    float dist = distance(st, mouse);
+    // Mobile optimization: Use length of delta instead of distance() function
+    vec2 delta = st - mouse;
+    float dist = length(delta);
 
-    // FLUID DISTORTION LOGIC (added +0.0001 to prevent NaN GPU crashes)
-    vec2 warp = normalize(st - mouse + 0.0001) * exp(-dist * 8.0) * 0.04;
-    
-    // Ambient breathing motion over time
+    // FLUID DISTORTION LOGIC
+    vec2 warp = normalize(delta + 0.0001) * exp(-dist * 8.0) * 0.04;
     warp += vec2(sin(uTime * 0.5 + st.y * 5.0), cos(uTime * 0.5 + st.x * 5.0)) * 0.002;
     vec2 warpedSt = st + warp;
 
-    // Map the grid scale (64.0 approximates your 4rem CSS size)
+    // Map the grid scale
     float gridScale = uResolution.y / 64.0;
     vec2 grid = fract(warpedSt * gridScale);
 
@@ -52,66 +51,75 @@ const FluidGridMaterial = shaderMaterial(
     float lineY = smoothstep(0.0, lineThickness, grid.y) - smoothstep(1.0 - lineThickness, 1.0, grid.y);
     float lines = 1.0 - (lineX * lineY); 
 
-    // LIGHTING & COLOR: Base is white, highlight is your studio's electric blue
+    // LIGHTING & COLOR
     vec3 baseColor = vec3(1.0, 1.0, 1.0);
     vec3 highlightColor = vec3(0.26, 0.46, 1.0); // #4377FF
 
-    // Intensity multiplier based on proximity to mouse
     float glow = exp(-dist * 6.0);
     vec3 finalColor = mix(baseColor, highlightColor, glow * 0.8);
     
-    // Base opacity matches your old CSS, scaling up near mouse
+    // Base opacity calculation
     float opacity = (0.06 + glow * 0.4) * lines;
+
+    // NATIVE GPU FADE (Replaces the expensive CSS mask-image)
+    // vUv.y goes from 0.0 at the bottom to 1.0 at the top.
+    // This perfectly mimics the "transparent 100%" at the bottom.
+    float verticalFade = smoothstep(0.0, 0.25, vUv.y);
+    opacity *= verticalFade;
 
     gl_FragColor = vec4(finalColor, opacity);
   }
   `
 )
 
-// Register material to React Three Fiber
 extend({ FluidGridMaterial })
 
 function ShaderPlane() {
   const materialRef = useRef()
-  // THE FIX: Grab the exact viewport dimensions of the user's screen
   const { size, viewport } = useThree()
+
+  // THE FIX: Only update resolution when the screen size actually changes
+  useEffect(() => {
+    if (materialRef.current) {
+      materialRef.current.uResolution.set(size.width, size.height)
+    }
+  }, [size])
 
   useFrame((state) => {
     if (!materialRef.current) return
 
     materialRef.current.uTime = state.clock.elapsedTime
     
-    // Map R3F pointer [-1, 1] to UV coordinates [0, 1]
     const targetX = (state.pointer.x + 1) / 2
     const targetY = (state.pointer.y + 1) / 2
 
     // Smooth Lerp for the mouse tracking
     materialRef.current.uMouse.x = THREE.MathUtils.lerp(materialRef.current.uMouse.x, targetX, 0.1)
     materialRef.current.uMouse.y = THREE.MathUtils.lerp(materialRef.current.uMouse.y, targetY, 0.1)
-    
-    // Constantly update resolution on window resize
-    materialRef.current.uResolution.set(size.width, size.height)
   })
 
   return (
-    // THE FIX: Scale the mesh to dynamically fill 100% of the screen width and height
     <mesh scale={[viewport.width, viewport.height, 1]}>
       <planeGeometry args={[1, 1]} />
-      <fluidGridMaterial ref={materialRef} transparent={true} />
+      {/* THE FIX: depthWrite={false} skips expensive 3D overlap math for a 2D plane */}
+      <fluidGridMaterial ref={materialRef} transparent={true} depthWrite={false} depthTest={false} />
     </mesh>
   )
 }
 
 export default function HeroBackground() {
   return (
-    <div 
-      className="absolute inset-0 z-0 pointer-events-auto"
-      style={{
-        WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 75%, transparent 100%)',
-        maskImage: 'linear-gradient(to bottom, black 0%, black 75%, transparent 100%)'
-      }}
-    >
-      <Canvas dpr={[1, 1.5]} gl={{ antialias: false }}>
+    // THE FIX: Removed the CSS maskImage completely
+    <div className="absolute inset-0 z-0 pointer-events-auto">
+      <Canvas 
+        dpr={[1, 1.5]} 
+        gl={{ 
+          antialias: false,
+          powerPreference: "high-performance",
+          alpha: true
+        }}
+        camera={{ position: [0, 0, 1], fov: 45 }}
+      >
         <ShaderPlane />
       </Canvas>
     </div>
